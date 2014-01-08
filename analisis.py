@@ -3,26 +3,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def analyze(name, paths, subPaths, prob, currencies, instruments):
-    result = getMeandAndStd(name, paths, subPaths, prob, currencies):    
+    result = getMeanAndStd(name, paths, subPaths, prob, currencies)
     
-    fig = plt.figure()
-    fig.suptitle(name.replace("_", " "))
-    num_time_steps = result.shape[2]
-    num_npv = result.shape[1]
+    num_time_steps = len(result['mean'][0, :])
+    num_npv = len(result['mean'])
     x = np.arange(num_time_steps)
-    for (i in range(num_npv))
-        plt.plot(x, result["mean", i, :])
-    
-    plt.legend(instruments) 
-    std = result["sdt", 0, :]
-    mktPrice = result["mean", 0, 0]
-    plt.plot(mktPrice + std, "r--")
-    plt.plot(mktPrice - std, "r--")
-    plt.axis([0, x[-1], min(mktPrice - std), max(mktPrice + std)])
+    for i in range(num_npv):
+        fig = plt.figure()
+        fig.suptitle(name.replace("_", " "))
+        npv_mean = result["mean"][i, :]
+        plt.plot(x, npv_mean, "b-", x, npv_mean, "bo")
+        plt.legend([instruments[i]])
+        std = result["std"][i, :]
+        mktPrice = result["mean"][i, 0]
+        plt.plot(mktPrice + std, "r--", mktPrice + std, "ro")
+        plt.plot(mktPrice - std, "r--", mktPrice - std, "ro")
+        min_y = min(np.concatenate([mktPrice - std, npv_mean]))
+        max_y = max(np.concatenate([mktPrice + std, npv_mean]))
+        plt.axis([0, x[-1], min_y, max_y])
     
     return(result)
 
-def getMeandAndStd(name, paths, subPaths, prob, currencies):
+def getMeanAndStd(name, paths, subPaths, prob, currencies):
     npv_file = h5py.File("NPV_data_" + name + ".hdf5", "r")
     scenarios_file = h5py.File("scenarios_" + name + ".hdf5", "r")
     npv = npv_file["CVANPVDATA"]
@@ -39,10 +41,11 @@ def getMeandAndStd(name, paths, subPaths, prob, currencies):
             fx = scenarios_file[curr + "\EUR_PRICE"]
             cociente = cociente * fx[..., 0]
         
-        npv_std[i, ...] = cociente.reshape(paths, subPaths, num_time_steps).mean(axis = 1).std(axis = 0) / sqrt(paths)
+        npv_std[i, ...] = cociente.reshape(paths, subPaths, num_time_steps)\
+            .mean(axis = 1).std(axis = 0) / sqrt(paths) * scipy.stats.norm.ppf((1+prob)/2.0)
         npv_mean[i, ...] = cociente.mean(axis = 0)
 
     npv_std[..., 0] = 0
     npv_file.close()
     scenarios_file.close()
-    return(np.array([mean = npv_mean, std = npv_std]))
+    return({"mean" : npv_mean, "std" : npv_std})
