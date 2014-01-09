@@ -2,26 +2,37 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-def analyze(name, paths, subPaths, prob, currencies, instruments):
+
+
+def analyze(name, paths, subPaths, prob, currencies, instruments, plots = dict()):
+    if len(plots) == 0:
+        plots = dict(zip(instruments, [[x] for x in range(len(instruments))]))
+    
+    print plots
     result = getMeanAndStd(name, paths, subPaths, prob, currencies)
-    
-    num_time_steps = len(result['mean'][0, :])
-    num_npv = len(result['mean'])
-    x = np.arange(num_time_steps)
-    for i in range(num_npv):
+    x = np.arange(len(result['mean'][0, :]))
+    for plotKey in plots.keys():
         fig = plt.figure()
-        fig.suptitle(name.replace("_", " "))
-        npv_mean = result["mean"][i, :]
-        plt.plot(x, npv_mean, "b-", x, npv_mean, "bo")
-        plt.legend([instruments[i]])
-        std = result["std"][i, :]
-        mktPrice = result["mean"][i, 0]
-        plt.plot(mktPrice + std, "r--", mktPrice + std, "ro")
-        plt.plot(mktPrice - std, "r--", mktPrice - std, "ro")
-        min_y = min(np.concatenate([mktPrice - std, npv_mean]))
-        max_y = max(np.concatenate([mktPrice + std, npv_mean]))
-        plt.axis([0, x[-1], min_y, max_y])
-    
+        fig.suptitle(plotKey)
+        plot_colors = []
+        for i in plots[plotKey]:
+            npv_mean = result["mean"][i, :]
+            print npv_mean
+            base_line, = plt.plot(x, npv_mean, "o-")
+            plot_colors.append(base_line.get_color())
+
+        plt.legend([instruments[i] for i in plots[plotKey]])        
+        plot_colors.reverse()
+        for i in plots[plotKey]:
+            std = result["std"][i, :]
+            mktPrice = result["mean"][i, 0]
+            plot_color = plot_colors.pop()
+            plt.plot(mktPrice + std, "--", color = plot_color)
+            plt.plot(mktPrice - std, "--", color = plot_color)
+            min_y = min(np.concatenate([mktPrice - std, npv_mean]))
+            max_y = max(np.concatenate([mktPrice + std, npv_mean]))
+            plt.axis([0, x[-1], min_y, max_y])
+
     return(result)
 
 def getMeanAndStd(name, paths, subPaths, prob, currencies):
