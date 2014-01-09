@@ -8,7 +8,6 @@ def analyze(name, paths, subPaths, prob, currencies, instruments, plots = dict()
     if len(plots) == 0:
         plots = dict(zip(instruments, [[x] for x in range(len(instruments))]))
     
-    print plots
     result = getMeanAndStd(name, paths, subPaths, prob, currencies)
     x = np.arange(len(result['mean'][0, :]))
     for plotKey in plots.keys():
@@ -17,7 +16,6 @@ def analyze(name, paths, subPaths, prob, currencies, instruments, plots = dict()
         plot_colors = []
         for i in plots[plotKey]:
             npv_mean = result["mean"][i, :]
-            print npv_mean
             base_line, = plt.plot(x, npv_mean, "o-")
             plot_colors.append(base_line.get_color())
 
