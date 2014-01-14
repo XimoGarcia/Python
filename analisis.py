@@ -48,9 +48,17 @@ def getMeanAndStd(name, paths, subPaths, prob, currencies):
         cociente.reshape(paths, subPaths, num_time_steps)
         curr = currencies[i]
         if curr != "EUR":
-            fx = scenarios_file[curr + "\EUR_PRICE"]
-            cociente = cociente * fx[..., 0]
-        
+            fx_key = curr + "\\EUR_PRICE"
+            invfx_key = "EUR\\" + curr + "_PRICE"
+            if scenarios_file.has_key(fx_key):
+                fx = scenarios_file[fx_key]
+                cociente = cociente * fx[..., 0]    
+            elif scenarios_file.has_key(invfx_key):
+                fx = scenarios_file[invfx_key]                
+                cociente = cociente / fx[..., 0]
+            else:
+                raise Exception("FX data for currency " + curr + " not found")
+
         npv_std[i, ...] = cociente.reshape(paths, subPaths, num_time_steps)\
             .mean(axis = 1).std(axis = 0) / sqrt(paths) * scipy.stats.norm.ppf((1+prob)/2.0)
         npv_mean[i, ...] = cociente.mean(axis = 0)
@@ -69,7 +77,7 @@ def analyzeFX():
     currencies = ("EUR", "EUR", "EUR", "EUR", "EUR", "EUR", "EUR", "USD", "GBP", "GBP", 
                   "USD", "USD", "EUR", "EUR", "GBP", "GBP", "USD", "EUR", "USD", "EUR", "GBP")
     
-    result = getMeanAndStd("FX", 5000, 1, 0.95, currencies)
+    result = getMeanAndStd("fx_eurusd", 5000, 1, 0.95, currencies)
     
     d_mean = dict(zip(instruments, [result['mean'][i] for i in range(len(instruments)) ] ))
     analyzeInstruments(d_mean, "EUR", "GBP")
