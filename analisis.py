@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.stats import norm
 
 
 def analyze(name, paths, subPaths, prob, currencies, instruments, plots = dict()):
@@ -39,12 +39,13 @@ def getMeanAndStd(name, paths, subPaths, prob, currencies):
     npv = npv_file["CVANPVDATA"]
     bcc = scenarios_file["__AGG__EONIA_IR"]
     
+    dividends = np.array([1, 0.95891695668747889, 0.80603068361017483, 0.76722027356523947, 0.70565662265129048, 0.58319112797312311, 0.56309446091823179])
     num_time_steps = npv.shape[1]
     num_npv = len(currencies)
     npv_mean = zeros((num_npv, num_time_steps))
     npv_std = zeros((num_npv, num_time_steps))
     for i in range(num_npv):
-        cociente = npv.value[..., i]/bcc[..., 0]
+        cociente = npv.value[..., i]/(bcc[..., 0]*dividends)
         cociente.reshape(paths, subPaths, num_time_steps)
         curr = currencies[i]
         if curr != "EUR":
@@ -60,7 +61,7 @@ def getMeanAndStd(name, paths, subPaths, prob, currencies):
                 raise Exception("FX data for currency " + curr + " not found")
 
         npv_std[i, ...] = cociente.reshape(paths, subPaths, num_time_steps)\
-            .mean(axis = 1).std(axis = 0) / sqrt(paths) * scipy.stats.norm.ppf((1+prob)/2.0)
+            .mean(axis = 1).std(axis = 0) / sqrt(paths) * norm.ppf((1+prob)/2.0)
         npv_mean[i, ...] = cociente.mean(axis = 0)
 
     npv_std[..., 0] = 0
@@ -141,7 +142,21 @@ def analyzeInstruments(d_mean, dom, fgn):
         + dom + " and give a fixed flow in " + fgn + ": " + str(max_CallPut_FixedFlow_diff)
     
     
-    
+def getEQ(name, eqName, dividends, paths, subPaths, prob):
+    scenarios_file = h5py.File("scenarios_" + name + ".hdf5", "r")
+    eq = scenarios_file[eqName + "_PRICE"]
+    bcc = scenarios_file["__AGG__EONIA_IR"]
+    cociente = eq[..., 0]/bcc[...,0]/dividends
+    num_time_steps = cociente.shape[1]
+    quantile = norm.ppf((1+prob)/2.0)
+    if paths * subPaths != cociente.shape[0]:
+        print "Num scenarios: " + str(cociente.shape[0])
+    c_std = cociente.reshape(paths, subPaths, num_time_steps).mean(axis = 1).std(axis = 0) / sqrt(paths) * quantile
+    c_mean = cociente.mean(axis = 0)
+    x = range(num_time_steps)
+    plot(x, c_mean, x, c_mean[0] + c_std, x, c_mean[0] - c_std)
+    scenarios_file.close()
+    return { "mean": c_mean, "std": c_std }
     
     
     
