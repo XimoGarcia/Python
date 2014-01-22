@@ -44,17 +44,18 @@ def getMeanAndStd(name, paths, subPaths, prob, currencies):
     num_npv = len(currencies)
     npv_mean = zeros((num_npv, num_time_steps))
     npv_std = zeros((num_npv, num_time_steps))
+    print npv.shape
     for i in range(num_npv):
-        cociente = npv.value[..., i]/(bcc[..., 0]*dividends)
+        cociente = npv.value[..., i]/(bcc[..., 0])
         cociente.reshape(paths, subPaths, num_time_steps)
         curr = currencies[i]
         if curr != "EUR":
             fx_key = curr + "\\EUR_PRICE"
             invfx_key = "EUR\\" + curr + "_PRICE"
-            if scenarios_file.has_key(fx_key):
+            if fx_key in scenarios_file.keys():
                 fx = scenarios_file[fx_key]
                 cociente = cociente * fx[..., 0]    
-            elif scenarios_file.has_key(invfx_key):
+            elif invfx_key in scenarios_file.keys():
                 fx = scenarios_file[invfx_key]                
                 cociente = cociente / fx[..., 0]
             else:
