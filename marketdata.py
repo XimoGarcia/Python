@@ -115,7 +115,7 @@ def getCaccran():
     payment_dates = df["payment_date"].dropna().apply(datetime_to_xldate)
     start_dates = ([initial_date] + payment_dates.values.tolist())[:-1]
     df["payment_date"] = payment_dates
-    df["end_date"] = pd.Series(start_dates, payment_dates.index)
+    df["end_date"] = payment_dates
     df["start_date"] = pd.Series(start_dates, payment_dates.index)
     df["reference_tenor"] = pd.Series([reference_tenor]*len(start_dates), payment_dates.index)
     df["nominal"] = pd.Series([exotic_nominal] * len(start_dates), payment_dates.index)
@@ -153,9 +153,9 @@ def getFundingLeg(dataFrame):
     header = "<deposit basis=\"{basis}\" market_data_id=\"{index}\" " + \
                 "capital_exchange=\"false\" id=\"legFloating\" " + \
                 "frequency=\"SIMPLE\" multiplier=\"1.0\">\n"
-    item = "<deposit payment_date=\"{payment_date:.0f}\" start_date=\"{spread_start_date:.0f}\" " + \
-            "fixing_date=\"{spread_start_date:.0f}\" end_date=\"{spread_end_date:.0f}\" " + \
-            "nominal=\"{spread_nominal}\" id=\"floating_flow_{spread_idx}\"/>\n"
+    item = "<deposit fixing_date=\"{spread_start_date:.0f}\" start_date=\"{spread_start_date:.0f}\" " + \
+            "end_date=\"{spread_end_date:.0f}\" payment_date=\"{payment_date:.0f}\" " + \
+            "spread=\"{spread}\" nominal=\"{spread_nominal}\" id=\"floating_flow_{spread_idx}\"/>\n"
             
     foot = "</deposit>\n"
     
@@ -224,8 +224,8 @@ def getMarketData():
     
     return cms_swaption_vol_xml + libor_swaption_vol_xml + libor_xml + cms_xml + shifters_xml + holidays_xml
 
-#result = getCaccran()
-result = getMarketData()
+result = getCaccran()
+#result = getMarketData()
 
 win32clipboard.OpenClipboard()
 win32clipboard.EmptyClipboard()
