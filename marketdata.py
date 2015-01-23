@@ -219,8 +219,8 @@ def getMarketData():
     
     holidays_xml = getHolidays()
     
-    cms_swaption_vol_xml = getVolatilitySwaption("cms_swaption_vol", cms_names)
-    libor_swaption_vol_xml = getVolatilitySwaption("libor_swaption_vol", libor_names)
+    cms_swaption_vol_xml = getVolatilitySwaption("cms_vol_cube", cms_names)
+    libor_swaption_vol_xml = getVolatilitySwaption("libor_vol_cube", libor_names)
     
     return cms_swaption_vol_xml + libor_swaption_vol_xml + libor_xml + cms_xml + shifters_xml + holidays_xml
 
