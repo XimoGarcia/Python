@@ -47,6 +47,45 @@ def getIndex(workbook, index_header, indexes, shifters):
     wb.close()
     return result
 
+def getIndexesFromCube(cube, maturities, index_header, indexes, shifters):
+    vol_header = "<volatility surface_type=\"FIXED\" type=\"PARAMS_INTERPOLATED\" " + \
+        "value=\"VOL_PARAM_SABR\" vol_nature=\"NORMAL\">\n" + \
+        "<interpolation extrapolate=\"true\" flat_extrapolation=\"true\" " + \
+        "left_side_derivatives=\"false\" magnitude=\"VOL\" method=\"LINEAR\"/>\n" + \
+        "<maturities_defaults type=\"SABR_NORMAL\"/>\n<maturities>\n"
+    
+    item_sep = "<maturity value=\"{date}\">\n<parameters>\n"
+    
+    item = "<parameter name=\"{param_name}\" value=\"{param_value}\" />\n"
+    
+    item_padding = "</parameters>\n</maturity>\n"
+    
+    index_padding = "</maturities>\n</volatility>\n</marketdata_index>\n"
+    
+    lowerK = 0.0
+    upperK = 10
+    
+    result = ""
+    for index, shifter in zip(indexes, shifters):
+        result += index_header.format(index_name=index, tenor_shifter=shifter)
+        result += vol_header
+        params = cube[index] + [maturities]
+        for alpha, beta, rho, nu, shift, date in zip(*params):
+
+            result += item_sep.format(date = int(date))
+            result += item.format(param_name = "alpha", param_value=alpha)
+            result += item.format(param_name = "beta", param_value=beta)
+            result += item.format(param_name = "rho", param_value=rho)
+            result += item.format(param_name = "nu", param_value=nu)
+            result += item.format(param_name = "lower_k", param_value=lowerK)
+            result += item.format(param_name = "upper_k", param_value=upperK)
+            result += item.format(param_name = "displacement", param_value=shift)
+            result += item_padding
+        result += index_padding
+        
+    return result
+
+
 def xldate_to_datetime(xldate):
     temp = dt.datetime(1899, 12, 30)
     delta = dt.timedelta(days=xldate)
@@ -224,10 +263,55 @@ def getMarketData():
     
     return cms_swaption_vol_xml + libor_swaption_vol_xml + libor_xml + cms_xml + shifters_xml + holidays_xml
 
-result = getCaccran()
+def getTable():
+    return pd.read_clipboard(header = None, sep=r"\t")
+
+
+def getSABRCube(items):
+    cube = {}
+    for alpha, beta, rho, nu, shift, index in zip(*items):
+        cube[index] = [alpha, beta, rho, nu, shift]
+        
+        
+    return cube
+
+def getIndexes():
+    
+    cms_index_header = "<marketdata_index basis=\"30/360\" " + \
+        "cms_floating_leg=\"{floating_index}\" " + \
+        "date_shifter=\"0 OPEN DAYS\" estimation_ccy_curve=\"OIS\" " + \
+        "holidays=\"NoHols\" schedule_shifter=\"6M MODFOL\" " + \
+        "tenor_shifter=\"{{tenor_shifter}}\" value=\"{{index_name}}\">\n"
+        
+    libor_index_header = "<marketdata_index basis=\"Act/360\" " + \
+        "date_shifter=\"0 OPEN DAYS\" estimation_ccy_curve=\"USD3M\" " + \
+        "holidays=\"NoHols\" tenor_shifter=\"{tenor_shifter}\" value=\"{index_name}\">"
+        
+    
+    cms_indexes = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30)
+    cms_names = map(lambda x: "CMS_USD_{years}y".format(years=x), cms_indexes)
+    cms_shifters = map(lambda x: "{years}Y MODFOL".format(years=x), cms_indexes)
+    
+    libor_indexes = (3,)
+    libor_names = map(lambda x: "USD_{months}M".format(months=x), libor_indexes)
+    libor_shifters = map(lambda x: "{months}m_index".format(months=x), libor_indexes)
+    
+    index_template = cms_index_header.format(floating_index = libor_names[0])
+    cube = getSABRCube([alphas, betas, rhos, nus, shifts, libor_names + cms_names])
+    cms_xml = getIndexesFromCube(cube, maturities, index_template, cms_names, cms_shifters)
+    
+    libor_xml = getIndexesFromCube(cube, maturities, libor_index_header, libor_names, libor_shifters)
+    
+    
+    return libor_xml + cms_xml
+
+
+
+#result = getCaccran()
 #result = getMarketData()
+indexes = getIndexes()
 
 win32clipboard.OpenClipboard()
 win32clipboard.EmptyClipboard()
-win32clipboard.SetClipboardText(result)
+win32clipboard.SetClipboardText(indexes)
 win32clipboard.CloseClipboard()
